@@ -1,0 +1,14 @@
+Código: 58110002
+Nome Estação: JACAREÍ
+Código Adicional: [em branco]
+Bacia: 5 - ATLÂNTICO,TRECHO LESTE
+SubBacia: 58 - RIO PARAÍBA DO SUL
+Rio: RIO PARAÍBA DO SUL
+Estado: SÃO PAULO
+Município: JACAREÍ
+Responsável: ANA
+Operadora: CPRM
+Latitude: -23.3078
+Longitude: -45.975
+Altitude (m): 575
+Área de Drenagem (Km²): 5470

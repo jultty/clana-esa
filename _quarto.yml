@@ -1,0 +1,14 @@
+project:
+  type: website
+  render:
+    - "*.qmd"
+    - "!data/"
+website:
+  favicon: assets/clana.ico
+  open-graph: true
+theme:
+  light: litera
+  dark: darkly
+execute:
+  freeze: false
+
