@@ -10,5 +10,5 @@ theme:
   light: litera
   dark: darkly
 execute:
-  freeze: false
+  freeze: true
 

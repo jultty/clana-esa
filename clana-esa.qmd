@@ -1,7 +1,7 @@
 ---
-title: "Projeto final de Estatística Aplicada"
+title: "clana: Estatística Aplicada à Hidrometria"
 author: "Juno Takano"
-subtitle: "Aplicação de modelos de regressão múltipla na solução de dados faltantes em séries históricas de dados hidrométricos."
+subtitle: "Aplicação de modelos de regressão múltipla para solução de dados faltantes em séries históricas de dados hidrométricos."
 date: last-modified
 lang: pt
 language:
@@ -22,9 +22,9 @@ execute:
   cache: true
 ---
 
-![Legenda da imagem principal](assets/clana.svg)
+![Gráfico de dispersão de um dos modelos abordados.](./assets/out/cotas04-03.png)
 
-## Contexto
+## Introdução
 
 Este trabalho investiga a aplicabilidade de um algoritmo de regressão múltipla no preenchimento de dados faltantes em séries históricas de dados hidrométricos da Agência Nacional de Águas (ANA).
 
@@ -50,7 +50,7 @@ A filtragem dos dados disponibilizados pelo termo "Jacareí" retornou um total d
 
 Em sua maior parte, tratam-se de dados de chuvas e cotas. O termo _cotas_ refere-se aos níveis de água dos rios (ANA, 2021).
 
-As observações são distribuídas em 78 colunas, 62 duas delas para cada um dos 31 dias do mês e 31 informações de _status_ para o respectivo dia:
+As observações são distribuídas em 78 colunas, 62 delas para cada um dos 31 dias do mês e 31 informações de _status_ para o respectivo dia:
 
 * **Cotas:** `Cota01` `Cota02` (...) `Cota30` `Cota31`
 
@@ -69,13 +69,13 @@ O significado de algumas destas variáveis é dado no topo de cada arquivo dispo
 
 Esta informação, que aparece antes dos dados estruturados, foi removida nos arquivos utilizados para análise neste trabalho, já que dificulta a leitura por ferramentas computacionais. O arquivo original foi preservado e acompanha os conjuntos processados.
 
-Este trabalho foi desenvolvido utilizando como ferramenta principal a [linguagem R](https://www.r-project.org/), voltada à estatística e análise de dados, e também o sistema de publicação [Quarto](https://quarto.org/), parte do mesmo ecossistema.
+Este relatório foi elaborado utilizando como ferramenta principal a [R](https://www.r-project.org/), uma linguagem de programação voltada à estatística, e também o sistema de publicação [Quarto](https://quarto.org/), parte do mesmo ecossistema. 
 
-## Ficha técnica
+## Visão geral
 
 ::: {.panel-tabset}
 
-### Visão geral
+### Escopo do projeto
 
 | | |
 |-|-|
@@ -110,116 +110,360 @@ O coeficiente de correlação, aqui obtido programaticamente para encontrar rela
 
 ## Carregamento
 
-Nesta etapa, os dados são carregados e preparados para o processamento.
+Nesta etapa, os dados foram carregados e preparados para o processamento.
 
 O arquivo de dados original é disponibilizado no formato **csv**, com vírgulas separando casas decimais e ponto e vírgula separando as colunas.
 
-### Carregamento
-
-Para começar a trabalhar de fato com os dados, começamos carregando as bibliotecas que serão usadas na etapa de limpeza:
+Serão utilizadas as bibliotecas `tidyverse` e `janitor` para limpar e fazer o processamento inicial dos dados:
 
 ```{r}
+#| output: false
+
 library(tidyverse)
 library(janitor)
 ```
 
-Usaremos o termo **cotas** para nos referimos ao conjunto de dados. 
+O termo **cotas** foi adotado para referir-se ao conjunto de dados no código.
 
 ```{r importa os dados}
 cotas <- read_delim("dados/cotas_C_58110002_headless.csv", delim=";")
 ```
 
-Pela saída da importação podemos ver que há problemas. A mesma mensagem indica como listá-los:
+## Limpeza
+
+Pela saída da importação é possível ver que há problemas. A mesma mensagem indica como listá-los:
 
 ```{r}
 problems(cotas)
 ```
 
-E verificar os tipos de dados:
+Parece que cada linha é terminada com um caracter `;` extra.
+
+Será portanto necessário limpar este caracter da última coluna e alterar o tipo para numérico: 
 
 ```{r}
-spec(cotas)
+cotas$Cota31Status <- as.numeric(gsub(";$", "", cotas$Cota31Status))
 ```
 
-Vamos converter para um dataframe:
+O conjunto carregado agora possui uma estrutura uniforme, ainda que com muitas lacunas:
 
 ```{r}
-cotas = data.frame(cotas)
-```
+#| code-fold: true
 
-E agora temos o conjunto carregado:
-
-```{r}
 cotas |> 
   filter(
-    grepl("01/04/2022", Data, ignore.case = TRUE)
+    grepl("01/04/2022", Data)
   )
 ```
 Acima, uma filtragem demonstrativa das observações referentes ao mês de abril de 2022.
 
-## Limpeza
+### Cabeçalhos
 
-Com os dados carregados, podemos dar início à limpeza.
-
-Além da limpeza, serão realizados aqui alguns processos de validação para verificar se os dados realmente estão limpos e para identificar quais variáveis possuem mais dados faltantes.
-
-### Limpeza
-
-#### Cabeçalhos
+Os cabeçalhos do arquivo original foram processados automaticamente, e não possuem caracteres especiais ou espaços:
 
 ```{r}
 colnames(cotas)
 ```
 
-Não foi necessário realizar limpeza nos nomes dos cabeçalhos, que foram portanto mantidos como no conjunto original.
-
-#### Padronização
-
-Para ficar mais fácil de entender a tabela, vamos reordenar as colunas:
-
-```{r}
-#cotas_pv <- cotas_pv |> 
-#  select(concept_id, PrefLabel, Definition, AltLabel_1, AltLabel_2, AltLabel_3)
-```
-
-#### Validação
-
-Feitas essas inserções e transformações, podemos executar o teste criado anteriormente para validar que a sequência de IDs agora está correta.
-
-### Modelagem
-
-```{r}
-library(ggplot2)
-
-# Create a scatterplot of mpg vs. wt
-ggplot(mtcars, aes(x = wt, y = mpg)) +
-  geom_point()
-```
-
-```{r}
-library(ggplot2)
-
-ggplot(mpg, aes(displ, hwy, colour = class)) +
-  geom_point()
-```
+Não foi necessária qualquer limpeza e eles puderam ser mantidos como no original.
 
 ## Análise
 
-
-## Conclusão
-
-
-Numericamente, esses foram os resultados finais da métrica de correlação:
+Abaixo uma listagem de quantas lacunas existem em cada coluna:
 
 ```{r}
 #| code-fold: true
 
-#termos |> 
-#  filter(Popularity > 0) |> 
-#  arrange(desc(Popularity)) |> 
-#  select(PrefLabel, Popularity) |> 
-#  rename(Termo = PrefLabel) |> 
-#  rename(Popularidade = Popularity)
+# obtém a quantidade de entradas nulas em cada coluna 
+total_lacunas <- colSums(is.na(cotas))
+
+# filtra colunas sem valores nulos
+total_lacunas <- total_lacunas[total_lacunas > 0]
+
+# ordena os resultados de forma decrescente 
+total_lacunas <- total_lacunas[order(total_lacunas, decreasing = TRUE)]
+
+as_tibble(
+ enframe(total_lacunas, name = "column", value = "n"))
+```
+
+### Correlação
+
+Usando a função `cor()` é possível chegar a uma matriz de coeficientes de correlação entre cada variável:
+
+```{r}
+#| code-fold: true
+library(dplyr)
+library(Matrix)
+
+matriz <- cotas |>
+  select_if(is.numeric) |>
+  cor(use = "pairwise.complete.obs") |>
+  as_tibble() 
+
+matriz |>
+  add_column(Coluna = colnames(cotas)
+    [sapply(cotas, is.numeric)], .before = 1)
+```
+
+A matriz de coeficientes obtida acima usa um método de correlação em pares para a covariância, um parâmetro que indica o grau de interdependência linear entre duas variáveis em relação às suas médias. 
+
+Com a opção `pairwise.complete.obs`, são considerados apenas os pares onde nenhum dos dois valores é nulo.
+
+Temos agora valores nulos apenas para as colunas e linhas onde todos os valores eram nulos originalmente. Para removê-los:
+
+```{r}
+#| warning: false
+
+matriz <- remove_empty(matriz)
+```
+
+A documentação do pacote _stats_, ao qual pertence a função `cor()` utilizada acima, explica especificamente sobre a opção de completação de lacunas em pares:
+
+> "[for `pairwise.complete.obs`] the correlation or covariance between each pair of variables is computed using all complete pairs of observations on those variables. This can result in covariance or correlation matrices which are not positive semi-definite, as well as NA entries if there are no complete pairs for that pair of variables." (R CORE TEAM, 2019)
+
+### Validação do instrumento
+
+A documentação também menciona que esta opção, em tradução livre, _"pode resultar em matrizes de covariância ou correlação que não são positivas semi-definidas"_, o que tem implicações que prejudicam a aplicabilidade da matriz na análise estatística.
+
+Para aferir o efeito dessa escolha, foram utilizados dois métodos de decomposição para verificar se a matriz é ou não positiva semi-definida (PSD).
+
+#### Método de decomposição de autovalores
+
+```{r}
+#| code-fold: true
+matriz_tipada <- as.matrix(matriz)
+autovalores <- eigen(matriz_tipada)$values
+
+if(all(autovalores >= 0)) {
+  print("A matriz é PSD")
+} else {
+  print("A matriz não é PSD")
+}
+```
+
+#### Método de decomposição de Cholesky
+
+```{r}
+#| code-fold: true
+triangular_inferior <- tryCatch(chol(matriz), error = function(e) NULL)
+
+if(is.null(triangular_inferior)) {
+  print("A matriz não é PSD")
+} else {
+  if(all.equal(matriz, crossprod(triangular_inferior))) {
+    print("A matriz é PSD")
+  }
+}
+```
+
+Os resultados mostram que a matriz não é positiva semi-definida. Testes com o parâmetro `na.or.complete` também não resultaram em uma matriz PSA.
+
+Observando a matriz de autovalores, temos:
+
+```{r}
+eigen(matriz)$values
+```
+
+Parece que os autovalores negativos estão todos após a posição 62.
+
+### Recorte
+
+Foi realizado um recorte utilizando apenas os dados referentes às cotas de cada 31 dias:
+
+```{r}
+recorte <- cotas |>
+  select(Cota01:Cota31) |>
+  drop_na()
+ 
+recorte
+```
+
+Em seguida, o recorte foi limpo de colunas ou linhas contendo campos vazios.
+
+```{r}
+matriz_recorte <- recorte |>
+  select_if(is.numeric) |>
+  cor(use = "na.or.complete") |>
+  as_tibble() 
+
+matriz_recorte
+```
+
+A recontagem de valores nulos mostra que não restaram mais lacunas:
+
+```{r}
+#| code-fold: true
+
+# obtém a quantidade de entradas nulas em cada coluna 
+lacunas <- colSums(is.na(matriz_recorte))
+
+# filtra colunas sem valores nulos
+lacunas <- lacunas[lacunas > 0]
+
+# ordena os resultados de forma decrescente 
+lacunas <- lacunas[order(lacunas, decreasing = TRUE)]
+
+as_tibble(enframe(lacunas, name = "column", value = "n"))
+```
+
+#### Método de decomposição de autovalores
+
+O novo recorte foi testado com sucesso pela decomposição de autovalores:
+
+```{r}
+#| code-fold: true
+tryCatch( autovalores <- eigen(matriz_recorte)$values , error = function(e) NULL)
+
+if(is.null(autovalores)) {
+  print("Erro:")
+  print(e)
+} else {
+  if(all(autovalores >= 0)) {
+    print("A matriz é PSD")
+  } else {
+    print("A matriz não é PSD")
+  }
+}
+```
+
+Embora com este recorte seja possível um resultado positivo neste método, o fato da matriz não ser simétrica torna impossível realizar a segunda etapa necessária ao teste de decomposição de Cholesky.
+
+O teste abaixo verifica se a matriz é simétrica:
+
+```{r}
+#| code-fold: true
+matriz_recorte <- as.matrix(matriz_recorte)
+
+if (isSymmetric(matriz_recorte)) {
+  print("A matriz é simétrica")
+} else {
+  print("A matriz não é simétrica")
+}
+```
+
+Uma solução para o problema é completar a forma simétrica da matriz pela sua transposta.
+
+#### Método de decomposição de Cholesky com a matriz completada
+
+```{r}
+#| code-fold: true
+
+# obtém a matriz simétrica somando-a com a transposta e dividindo por 2
+matriz_simetrica <- (matriz_recorte + t(matriz_recorte)) / 2
+triangular_inferior <- tryCatch(chol(matriz_simetrica), error = function(e) NULL)
+
+triangular_superior <- row(triangular_inferior) > col(triangular_inferior)
+all(triangular_inferior[triangular_superior] == 0)
+
+```
+
+Foram levantados ainda os seguintes testes adicionais, que também confirmaram a viabilidade do modelo até então definido:
+
+#### Teste por decomposição em valores singulares 
+
+```{r}
+#| code-fold: true
+decomposicao <- svd(matriz_recorte)
+all(decomposicao$d >= 0)
+```
+
+#### Teste pela forma quadrática 
+
+```{r}
+#| code-fold: true
+n_colunas = ncol(matriz_recorte)
+
+x <- sample(-9:9, n_colunas, replace = TRUE)
+
+while (all(x == 0)) {  
+  x <- sample(-9:9, n_colunas, replace = TRUE)
+}
+
+resultado <- TRUE
+for (i in 1:n_colunas) {
+  if (t(x) %*% matriz_recorte %*% x < 0) {
+    resultado <- FALSE
+    break
+  }
+}
+
+resultado
+```
+
+## Aplicação
+
+Abaixo é possível visualizar a mesma região, utilizada para chegar à matriz de correlação, como ela aparece no conjunto original, incluindo suas lacunas.
+
+```{r}
+cotas |>
+  select(Cota01:Cota31)
+```
+
+Podemos encontrar diversas áreas onde o modelo desenvolvido pode ser testado. Por exemplo, a região abaixo:
+
+```{r}
+cotas |> 
+  select(Cota05:Cota16) |>
+  slice(745:755)
+```
+
+Esta região corresponde aos dias 7 a 12 de abril de 2022.
+
+```{r}
+matriz_df <- matriz_recorte |>
+  as.data.frame()
+
+matriz_df |>
+  add_column(Colunas = colnames(matriz_recorte), .before = 1)
+```
+
+#### Modelagens
+
+```{r}
+model = lm(Cota07~Cota06 + Cota05, data = matriz_df)
+summary(model) 
+coefficients(model)
+summary(model)$r.squared
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(matriz_df, aes(x = Cota07, y = Cota06)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
+  labs(x = "Cota 07", y = "Cota 06")
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(matriz_df, aes(x = Cota07, y = Cota01)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
+  labs(x = "Cota 07", y = "Cota 01")
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(matriz_df, aes(x = Cota03, y = Cota04)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
+  labs(x = "Cota 03", y = "Cota 04")
+```
+
+## Conclusão
+
+Para cenários onde os níveis dos rios não passam por mudanças bruscas, a regressão linear pode ser um instrumento eficaz na previsão de valores faltantes, em especial onde há dados em dias contíguos.
+
+Os dados obtidos mostram com significância estatística como os coeficientes de correlação estudados neste trabalho variam de mais para menos conforme se distanciam da data em que o valor observado de fato ocorreu.
+
+Numericamente, esses foram os resultados finais da métrica de correlação:
+
+```{r}
+matriz_df
 ```
 
 ## Bibliografia
@@ -230,6 +474,7 @@ Numericamente, esses foram os resultados finais da métrica de correlação:
 - BRASIL. Poder Executivo. Lei Nº 9.984, de 17 de julho de 2000. Dispõe sobre a criação da Agência Nacional de Águas e Saneamento Básico. Brasília, DF: Poder Executivo, 2000. Disponível em: <http://www.planalto.gov.br/ccivil_03/leis/l9984.htm>
 - R CORE TEAM. R: A language and environment for statistical computing. Vienna, Áustria. R Foundation for Statistical Computing, 2018. Disponível em: <https://www.R-project.org/>. Acesso em: 29 jun. 2023
 - ALLAIRE, J. J. et al. Quarto. 23 jun. 2023. Disponível em: <https://quarto.org/>
+- R CORE TEAM. cor: Correlation, Variance and Covariance (Matrices). Disponível em: <https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/cor>. Acesso em: 1 jul. 2023. 
 
 
 * Recursos relacionados 
