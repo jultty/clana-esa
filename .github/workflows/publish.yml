@@ -19,7 +19,7 @@ jobs:
           echo "::group::Install pak"
           if which sudo >/dev/null; then SUDO="sudo -E --preserve-env=PATH env"; else SUDO=""; fi
           $SUDO R -q -e 'dir.create(Sys.getenv("R_LIB_FOR_PAK"), recursive = TRUE, showWarnings = FALSE)'
-          $SUDO R -q -e 'install.packages("rmarkdown")'
+          $SUDO R -q -e 'install.packages(c("rmarkdown", "tidyverse", "janitor", "dplyr", "Matrix", "ggplot2"))'
           echo "::endgroup::"
         shell: bash
 
