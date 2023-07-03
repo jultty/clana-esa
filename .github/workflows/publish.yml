@@ -18,7 +18,7 @@ jobs:
         run: |
           echo "::group::Install dependencies"
           if which sudo >/dev/null; then SUDO="sudo -E --preserve-env=PATH env"; else SUDO=""; fi
-          R_LIB_PATH="/tmp/lib"
+          R_LIB_PATH="/usr/local/lib/R/site-library"
           $SUDO R -q -e 'dir.create(Sys.getenv("R_LIB_PATH"), recursive = TRUE, showWarnings = FALSE)'
           $SUDO R -q -e 'install.packages(c("rmarkdown", "tidyverse", "janitor", "dplyr", "Matrix", "ggplot2", lib = Sys.getenv("R_LIB_PATH")))'
           echo "::endgroup::"
