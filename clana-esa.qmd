@@ -26,13 +26,13 @@ execute:
 
 ## Introdução
 
-Este trabalho investiga a aplicabilidade de um algoritmo de regressão múltipla no preenchimento de dados faltantes em séries históricas de dados hidrométricos da Agência Nacional de Águas (ANA).
+Este trabalho investiga a aplicabilidade de modelos de regressão múltipla no preenchimento de dados faltantes nas séries históricas de dados hidrométricos da Agência Nacional de Águas (ANA).
 
 A ANA é uma entidade do governo brasileiro responsável pela realização de estudos, pesquisas, elaboração e fiscalização de normas reguladoras relacionadas aos recursos hídricos e ao saneamento básico (BRASIL, 2000).
 
 A ANA disponibiliza dados através de um sistema público, o Sistema Nacional de Informações sobre Recursos Hídricos (SNIRH), onde é possível acessar medições de níveis fluviais, vazões, chuvas, clima, qualidade da água e sedimentos. As medições são coletadas por diferentes instituições e empresas ligadas à Rede Hidrometeorológica Nacional, coordenada pela ANA. Em 2018, a rede contava com 4641 pontos de monitoramento (“Portal HidroWeb”, 2023).
 
-O principal conjunto de dados utilizado foi uma série histórica referente à estação de coleta de dados Jacareí  (Código 58110002), operada pelo Serviço Geológico do Brasil. A série consiste de 962 observações ao longo dos anos 2000 a 2023.
+O principal conjunto de dados utilizado foi uma série histórica referente à estação de coleta de dados Jacareí  (Código 58110002), localizada no Rio Paraíba do Sul e operada pelo Serviço Geológico do Brasil. A série consiste de 962 observações ao longo dos anos 2000 a 2023.
 
 A filtragem dos dados disponibilizados pelo termo "Jacareí" retornou um total de 33 resultados, tabulados abaixo por seus prefixos:
 
@@ -50,7 +50,7 @@ A filtragem dos dados disponibilizados pelo termo "Jacareí" retornou um total d
 
 Em sua maior parte, tratam-se de dados de chuvas e cotas. O termo _cotas_ refere-se aos níveis de água dos rios (ANA, 2021).
 
-As observações são distribuídas em 78 colunas, 62 delas para cada um dos 31 dias do mês e 31 informações de _status_ para o respectivo dia:
+As observações são distribuídas em 78 colunas, 62 delas para cada um dos 31 dias do mês e 31 informações de _status_ para o dia respectivo:
 
 * **Cotas:** `Cota01` `Cota02` (...) `Cota30` `Cota31`
 
@@ -69,7 +69,9 @@ O significado de algumas destas variáveis é dado no topo de cada arquivo dispo
 
 Esta informação, que aparece antes dos dados estruturados, foi removida nos arquivos utilizados para análise neste trabalho, já que dificulta a leitura por ferramentas computacionais. O arquivo original foi preservado e acompanha os conjuntos processados.
 
-Este relatório foi elaborado utilizando como ferramenta principal a [R](https://www.r-project.org/), uma linguagem de programação voltada à estatística, e também o sistema de publicação [Quarto](https://quarto.org/), parte do mesmo ecossistema. 
+Este relatório foi elaborado utilizando [R](https://www.r-project.org/) como ferramenta principal, uma linguagem de programação voltada à estatística. Para publicação, foi utilizado também o sistema de cadernos [Quarto](https://quarto.org/), parte do mesmo ecossistema.  
+
+Parte dos conceitos utilizados foi desenvolvida paralelamente no trabalho [clana](https://github.com/jultty/clana), um estudo sobre Estruturas de Dados onde um outro conjunto da agência foi utilizado para o desenvolvimento de uma aplicação capaz de identificar e preencher lacunas usando modelos de regressão linear simples. 
 
 ## Visão geral
 
@@ -79,7 +81,7 @@ Este relatório foi elaborado utilizando como ferramenta principal a [R](https:/
 
 | | |
 |-|-|
-| **Objetivo** | Demonstrar a aplicabilidade de algoritmos de regressão linear múltipla na solução de dados faltantes em séries históricas de dados hidrométricos da Agência Nacional das Águas |
+| **Objetivo** | Demonstrar a aplicabilidade de algoritmos de regressão linear múltipla na solução de dados faltantes em séries históricas de dados hidrométricos da Agência Nacional de Águas |
 | **Problema** | Determinar programaticamente quais variáveis possuem correlações fortes |
 | **Métrica** | Coeficiente de correlação |
 | **Público**  | Pessoas pesquisadoras, estudantes e profissionais da área de hidrometria, geometeorologia e gestão de recursos hídricos |
@@ -106,7 +108,7 @@ Este relatório foi elaborado utilizando como ferramenta principal a [R](https:/
                                                                        
 :::
 
-O coeficiente de correlação, aqui obtido programaticamente para encontrar relações fortes entre as diferentes variáveis, foi utilizado como a métrica norteadora deste estudo.
+O coeficiente de correlação, aqui obtido programaticamente para encontrar relações fortes entre as diferentes variáveis, foi utilizado como a métrica norteadora deste estudo através de uma matriz de correlação.
 
 ## Carregamento
 
@@ -165,11 +167,11 @@ Os cabeçalhos do arquivo original foram processados automaticamente, e não pos
 colnames(cotas)
 ```
 
-Não foi necessária qualquer limpeza e eles puderam ser mantidos como no original.
+Não foi necessária qualquer limpeza e eles puderam ser mantidos como no original, o que trouxe facilidade na verificação cruzada com o conjunto original e ferramentas auxiliares tais como planilhas.
 
 ## Análise
 
-Abaixo uma listagem de quantas lacunas existem em cada coluna:
+Abaixo obteve-se uma listagem de quantas lacunas há em cada coluna:
 
 ```{r}
 #| code-fold: true
@@ -193,6 +195,10 @@ Usando a função `cor()` é possível chegar a uma matriz de coeficientes de co
 
 ```{r}
 #| code-fold: true
+#| warning: false
+#| error: false
+# TODO: Considerar o desvio padrão
+
 library(dplyr)
 library(Matrix)
 
@@ -206,9 +212,9 @@ matriz |>
     [sapply(cotas, is.numeric)], .before = 1)
 ```
 
-A matriz de coeficientes obtida acima usa um método de correlação em pares para a covariância, um parâmetro que indica o grau de interdependência linear entre duas variáveis em relação às suas médias. 
+A matriz de correlação obtida acima usa um método de correlação em pares para a covariância, parâmetro que indica o grau de interdependência linear entre duas variáveis em relação às suas médias. 
 
-Com a opção `pairwise.complete.obs`, são considerados apenas os pares onde nenhum dos dois valores é nulo.
+Com a opção `pairwise.complete.obs`, são considerados apenas os pares onde nenhum dos dois valores é nulo. Como desvantagem, ela pode reduzir demais o tamanho da amostra quando há uma quantidade grande de valores nulos. 
 
 Temos agora valores nulos apenas para as colunas e linhas onde todos os valores eram nulos originalmente. Para removê-los:
 
@@ -224,9 +230,9 @@ A documentação do pacote _stats_, ao qual pertence a função `cor()` utilizad
 
 ### Validação do instrumento
 
-A documentação também menciona que esta opção, em tradução livre, _"pode resultar em matrizes de covariância ou correlação que não são positivas semi-definidas"_, o que tem implicações que prejudicam a aplicabilidade da matriz na análise estatística.
+A documentação também menciona que esta opção, em tradução livre, _"pode resultar em matrizes de covariância ou correlação que **não são positivas semi-definidas**"_, o que tem implicações que prejudicam a aplicabilidade da matriz na análise estatística.
 
-Para aferir o efeito dessa escolha, foram utilizados dois métodos de decomposição para verificar se a matriz é ou não positiva semi-definida (PSD).
+Para compreender melhor o conceito de uma matriz positiva semi-definida (PSD) e aferir o efeito da escolha do método `pairwise.complete.obs`, foram utilizados duas técnicas de decomposição para verificar se a matriz é ou não uma matriz PSD.
 
 #### Método de decomposição de autovalores
 
@@ -257,7 +263,7 @@ if(is.null(triangular_inferior)) {
 }
 ```
 
-Os resultados mostram que a matriz não é positiva semi-definida. Testes com o parâmetro `na.or.complete` também não resultaram em uma matriz PSA.
+Os resultados mostram que a matriz obtida não é positiva semi-definida. Testes com a opção `na.or.complete` também não resultaram em uma matriz PSA.
 
 Observando a matriz de autovalores, temos:
 
@@ -272,6 +278,8 @@ Parece que os autovalores negativos estão todos após a posição 62.
 Foi realizado um recorte utilizando apenas os dados referentes às cotas de cada 31 dias:
 
 ```{r}
+#| code-fold: true
+
 recorte <- cotas |>
   select(Cota01:Cota31) |>
   drop_na()
@@ -282,6 +290,8 @@ recorte
 Em seguida, o recorte foi limpo de colunas ou linhas contendo campos vazios.
 
 ```{r}
+#| code-fold: true
+
 matriz_recorte <- recorte |>
   select_if(is.numeric) |>
   cor(use = "na.or.complete") |>
@@ -327,7 +337,7 @@ if(is.null(autovalores)) {
 }
 ```
 
-Embora com este recorte seja possível um resultado positivo neste método, o fato da matriz não ser simétrica torna impossível realizar a segunda etapa necessária ao teste de decomposição de Cholesky.
+Embora com este recorte seja possível um resultado positivo usando a técnica de verificação pela decomposição de autovalores, o fato da matriz não ser simétrica torna impossível realizar a segunda etapa necessária ao teste de decomposição de Cholesky.
 
 O teste abaixo verifica se a matriz é simétrica:
 
@@ -358,7 +368,7 @@ all(triangular_inferior[triangular_superior] == 0)
 
 ```
 
-Foram levantados ainda os seguintes testes adicionais, que também confirmaram a viabilidade do modelo até então definido:
+Foram levantados ainda os seguintes testes adicionais, que também confirmaram a matriz como PSD:
 
 #### Teste por decomposição em valores singulares 
 
@@ -393,9 +403,11 @@ resultado
 
 ## Aplicação
 
-Abaixo é possível visualizar a mesma região, utilizada para chegar à matriz de correlação, como ela aparece no conjunto original, incluindo suas lacunas.
+Utilizando esta região, podemos fitlrar o conjunto original para ver como ela é incluindo suas lacunas.
 
 ```{r}
+#| code-fold: true
+
 cotas |>
   select(Cota01:Cota31)
 ```
@@ -403,6 +415,8 @@ cotas |>
 Podemos encontrar diversas áreas onde o modelo desenvolvido pode ser testado. Por exemplo, a região abaixo:
 
 ```{r}
+#| code-fold: true
+
 cotas |> 
   select(Cota05:Cota16) |>
   slice(745:755)
@@ -410,7 +424,11 @@ cotas |>
 
 Esta região corresponde aos dias 7 a 12 de abril de 2022.
 
+Na tabela abaixo, vemos a mesma matriz de correlação com uma coluna extra à frente que facilita verificar a correlação entre as observações mostradas no intervalo.
+
 ```{r}
+#| code-fold: true
+
 matriz_df <- matriz_recorte |>
   as.data.frame()
 
@@ -418,53 +436,96 @@ matriz_df |>
   add_column(Colunas = colnames(matriz_recorte), .before = 1)
 ```
 
-#### Modelagens
+#### Modelo demonstrativo
+
+Usando a função nativa em R para criar modelos de regressão linear, podemos criar um modelo utilizando duas ou mais variáveis. Para a coluna 7, podemos usar as colunas completas mais próximas, 6 e 5, que possuem coeficientes de correlação maiores.
 
 ```{r}
+#| code-fold: true
+
 model = lm(Cota07~Cota06 + Cota05, data = matriz_df)
+```
+
+O modelo retornado contém diferentes parâmetros para esta correlação específica:
+```{r}
+#| echo: false
 summary(model) 
+```
+
+É possível destacar, por exemplo, os coeficientes:
+```{r}
+#| echo: false
 coefficients(model)
+```
+
+E $r^2$ para a correlação múltipla entre as variáveis `Cota07`, `Cota06` e `Cota05`:
+```{r}
+#| echo: false
 summary(model)$r.squared
 ```
 
 ```{r}
+#| code-fold: true
+#| fig-cap: Plotagem para a correlação entre Cota07 e Cota06.  As variáveis apresentaram uma correlação positiva de 87%
+
 library(ggplot2)
 
 ggplot(matriz_df, aes(x = Cota07, y = Cota06)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
-  labs(x = "Cota 07", y = "Cota 06")
+  labs(x = "Cota 07", y = "Cota 06") +
+  annotate("text", x = max(matriz_df$Cota07), y = max(matriz_df$Cota06),
+  label = paste("r:", round(cor(matriz_df$Cota07, matriz_df$Cota06), 2)),
+  hjust = 1, vjust = 1)
 ```
 
 ```{r}
+#| code-fold: true
+#| fig-cap: Plotagem demonstrativa para uma entre duas medições distantes, Cota01 e Cota07. A correlação encontrada foi de apenas 43%
+
 library(ggplot2)
 
 ggplot(matriz_df, aes(x = Cota07, y = Cota01)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
-  labs(x = "Cota 07", y = "Cota 01")
+  labs(x = "Cota 07", y = "Cota 01") +
+  annotate("text", x = max(matriz_df$Cota07), y = max(matriz_df$Cota01),
+  label = paste("r:", round(cor(matriz_df$Cota07, matriz_df$Cota01), 2)),
+  hjust = 1, vjust = 1)
 ```
 
 ```{r}
+#| code-fold: true
+#| fig-cap: Dispersão para Cota03 e Cota04, com correlação de 99%, uma das maiores encontradas na matriz de correlação. Os padrões observáveis na matriz mostram que medições em dias próximos exibem um padrão linear de mudança.
+
 library(ggplot2)
 
 ggplot(matriz_df, aes(x = Cota03, y = Cota04)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "darkgreen") +
-  labs(x = "Cota 03", y = "Cota 04")
+  labs(x = "Cota 03", y = "Cota 04") +
+  annotate("text", x = max(matriz_df$Cota03), y = max(matriz_df$Cota04),
+  label = paste("r:", round(cor(matriz_df$Cota03, matriz_df$Cota04), 2)),
+  hjust = 1, vjust = 1)
 ```
 
 ## Conclusão
 
-Para cenários onde os níveis dos rios não passam por mudanças bruscas, a regressão linear pode ser um instrumento eficaz na previsão de valores faltantes, em especial onde há dados em dias contíguos.
+Para cenários onde os níveis dos rios não passam por mudanças bruscas, a regressão linear pode ser um instrumento eficaz na previsão de valores faltantes, em especial onde há dados em dias contíguos que podem ser usados na construção do modelo.
 
-Os dados obtidos mostram com significância estatística como os coeficientes de correlação estudados neste trabalho variam de mais para menos conforme se distanciam da data em que o valor observado de fato ocorreu.
-
-Numericamente, esses foram os resultados finais da métrica de correlação:
+Como o estudo tomou como principal métrica os coeficientes de correlação, numericamente os dados mais sintéticos sobre o que foi observado estão na matriz de correlação obtida:
 
 ```{r}
+#| echo: false
+
 matriz_df
 ```
+
+Os dados mostram uma tendência visível que varia de mais para menos conforme a variável se distancia da data em que o valor observado de fato ocorreu. 
+
+Embora neste recorte específico possamos perceber uma tendência relativamente linear, cabe ressaltar que diferentes fatores podem afetar as cotas, alguns linearmente relacionados e outros não, como a precipitação em pontos distantes que chegam aos rios por escoamento superficial e subterrâneo (CHOW et al., 1994 apud CAPOZZOLI et al., 2017).
+
+As ferramentas utilizadas podem ser readaptadas para diferentes intervalos e tipos de conjuntos com poucas adaptações. Com isto a contribuição na criação de modelos documentáveis e transparentes também aparece como uma possibilidade interessante.
 
 ## Bibliografia
 
@@ -475,6 +536,7 @@ matriz_df
 - R CORE TEAM. R: A language and environment for statistical computing. Vienna, Áustria. R Foundation for Statistical Computing, 2018. Disponível em: <https://www.R-project.org/>. Acesso em: 29 jun. 2023
 - ALLAIRE, J. J. et al. Quarto. 23 jun. 2023. Disponível em: <https://quarto.org/>
 - R CORE TEAM. cor: Correlation, Variance and Covariance (Matrices). Disponível em: <https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/cor>. Acesso em: 1 jul. 2023. 
+- CAPOZZOLI, C. R.; CARDOSO, A. DE O.; FERRAZ, S. E. T. Padrões de Variabilidade de Vazão de Rios nas Principais Bacias Brasileiras e Associação com Índices Climáticos. Revista Brasileira de Meteorologia, v. 32, p. 243–254, jun. 2017. 
 
 
 * Recursos relacionados 
